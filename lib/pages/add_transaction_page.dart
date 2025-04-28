@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:awesome_dialog/awesome_dialog.dart';
 import 'package:lunari/utils/colors.dart';
 
 class AddTransactionPage extends StatefulWidget {
+  final String email; // <<< Tambahkan ini
+
+  AddTransactionPage({required this.email}); // <<< Tambahkan ini
+
   @override
   _AddTransactionPageState createState() => _AddTransactionPageState();
 }
@@ -12,11 +18,6 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
   DateTime _selectedDate = DateTime.now();
   String _type = 'Pemasukan';
 
-  void _submitTransaction() {
-    // TODO: Simpan transaksi ke Firebase
-    Navigator.pop(context);
-  }
-
   void _presentDatePicker() async {
     final DateTime? pickedDate = await showDatePicker(
       context: context,
@@ -24,11 +25,62 @@ class _AddTransactionPageState extends State<AddTransactionPage> {
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (pickedDate != null && pickedDate != _selectedDate) {
+    if (pickedDate != null) {
       setState(() {
         _selectedDate = pickedDate;
       });
     }
+  }
+
+  Future<void> _submitTransaction() async {
+    final title = _titleController.text.trim();
+    final amountText = _amountController.text.trim();
+
+    if (title.isEmpty || amountText.isEmpty) {
+      _showError("Semua field wajib diisi!");
+      return;
+    }
+
+    double? amount = double.tryParse(amountText);
+    if (amount == null || amount <= 0) {
+      _showError("Jumlah harus berupa angka positif!");
+      return;
+    }
+
+    try {
+      await FirebaseFirestore.instance.collection('transactions').add({
+        'email': widget.email, // <<< Gunakan widget.email
+        'title': title,
+        'amount': amount,
+        'type': _type == 'Pemasukan' ? 'income' : 'expense',
+        'date': Timestamp.fromDate(_selectedDate),
+      });
+
+      AwesomeDialog(
+        context: context,
+        dialogType: DialogType.success,
+        animType: AnimType.bottomSlide,
+        title: 'Berhasil',
+        desc: 'Transaksi berhasil disimpan!',
+        btnOkOnPress: () {
+          Navigator.pop(context);
+        },
+      ).show();
+    } catch (e) {
+      print('Error saat menyimpan transaksi: $e');
+      _showError("Terjadi kesalahan saat menyimpan data.");
+    }
+  }
+
+  void _showError(String message) {
+    AwesomeDialog(
+      context: context,
+      dialogType: DialogType.error,
+      animType: AnimType.bottomSlide,
+      title: 'Error',
+      desc: message,
+      btnOkOnPress: () {},
+    ).show();
   }
 
   @override
