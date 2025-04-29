@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+import 'package:grouped_list/grouped_list.dart';
 import 'package:lunari/pages/add_transaction_page.dart';
 import 'package:lunari/utils/colors.dart';
 
@@ -10,12 +12,17 @@ class HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Ambil transaksi user berdasarkan email
     final transactionsStream =
         FirebaseFirestore.instance
             .collection('transactions')
             .where('email', isEqualTo: email)
             .snapshots();
+
+    final currencyFormat = NumberFormat.currency(
+      locale: 'id',
+      symbol: 'Rp ',
+      decimalDigits: 0,
+    );
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -46,18 +53,28 @@ class HomePage extends StatelessWidget {
 
           final transactions = snapshot.data?.docs ?? [];
 
+          List<Map<String, dynamic>> transactionList =
+              transactions.map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                final date =
+                    (data['date'] as Timestamp?)?.toDate() ?? DateTime.now();
+                return {
+                  'id': doc.id,
+                  'title': data['title'] ?? '',
+                  'amount': (data['amount'] ?? 0).toDouble(),
+                  'type': data['type'] ?? 'income',
+                  'date': date,
+                };
+              }).toList();
+
           double totalIncome = 0;
           double totalExpense = 0;
 
-          for (var doc in transactions) {
-            final data = doc.data() as Map<String, dynamic>;
-            final amount = (data['amount'] ?? 0).toDouble();
-            final type = data['type'] ?? 'income';
-
-            if (type == 'income') {
-              totalIncome += amount;
-            } else if (type == 'expense') {
-              totalExpense += amount;
+          for (var t in transactionList) {
+            if (t['type'] == 'income') {
+              totalIncome += t['amount'];
+            } else {
+              totalExpense += t['amount'];
             }
           }
 
@@ -65,7 +82,6 @@ class HomePage extends StatelessWidget {
 
           return Stack(
             children: [
-              // Background melengkung
               Container(
                 height: 300,
                 decoration: BoxDecoration(
@@ -84,7 +100,7 @@ class HomePage extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Sapaan
+                    // Greeting
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -103,7 +119,6 @@ class HomePage extends StatelessWidget {
                         ),
                       ],
                     ),
-
                     SizedBox(height: 20),
 
                     // Total Balance
@@ -122,7 +137,7 @@ class HomePage extends StatelessWidget {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            'Rp ${totalBalance.toStringAsFixed(0)}',
+                            currencyFormat.format(totalBalance),
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 30,
@@ -132,7 +147,6 @@ class HomePage extends StatelessWidget {
                         ],
                       ),
                     ),
-
                     SizedBox(height: 5),
 
                     // Income & Expense
@@ -156,7 +170,7 @@ class HomePage extends StatelessWidget {
                                 ),
                                 SizedBox(height: 8),
                                 Text(
-                                  'Rp ${totalIncome.toStringAsFixed(0)}',
+                                  currencyFormat.format(totalIncome),
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -184,7 +198,7 @@ class HomePage extends StatelessWidget {
                                 ),
                                 SizedBox(height: 8),
                                 Text(
-                                  'Rp ${totalExpense.toStringAsFixed(0)}',
+                                  currencyFormat.format(totalExpense),
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -197,9 +211,9 @@ class HomePage extends StatelessWidget {
                         ),
                       ],
                     ),
-
                     SizedBox(height: 24),
 
+                    // Transaction History
                     Text(
                       'Riwayat Transaksi',
                       style: TextStyle(
@@ -211,42 +225,61 @@ class HomePage extends StatelessWidget {
 
                     Expanded(
                       child:
-                          transactions.isEmpty
+                          transactionList.isEmpty
                               ? Center(child: Text('Belum ada transaksi.'))
-                              : ListView.builder(
-                                itemCount: transactions.length,
-                                itemBuilder: (context, index) {
-                                  final data =
-                                      transactions[index].data()
-                                          as Map<String, dynamic>;
-                                  final title = data['title'] ?? '';
-                                  final amount =
-                                      (data['amount'] ?? 0).toDouble();
-                                  final date =
-                                      (data['date'] as Timestamp?)?.toDate();
-                                  final type = data['type'] ?? 'income';
-
+                              : GroupedListView<Map<String, dynamic>, String>(
+                                elements: transactionList,
+                                groupBy:
+                                    (element) => DateFormat(
+                                      'MMMM yyyy',
+                                      'id_ID',
+                                    ).format(element['date']),
+                                groupSeparatorBuilder:
+                                    (String groupByValue) => Container(
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 8,
+                                      ),
+                                      width: double.infinity,
+                                      child: Text(
+                                        groupByValue,
+                                        style: TextStyle(
+                                          color: Colors.black,
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                itemBuilder: (context, element) {
                                   return ListTile(
                                     leading: Icon(
-                                      type == 'income'
+                                      element['type'] == 'income'
                                           ? Icons.arrow_downward
                                           : Icons.arrow_upward,
                                       color:
-                                          type == 'income'
+                                          element['type'] == 'income'
                                               ? Colors.green
                                               : Colors.red,
                                     ),
-                                    title: Text(title),
+                                    title: Text(element['title']),
                                     subtitle: Text(
-                                      date != null
-                                          ? '${date.day}/${date.month}/${date.year}'
-                                          : 'Tanggal tidak tersedia',
+                                      DateFormat(
+                                        'dd MMM yyyy',
+                                        'id_ID',
+                                      ).format(element['date']),
                                     ),
                                     trailing: Text(
-                                      '${type == 'income' ? '+' : '-'}Rp ${amount.toStringAsFixed(0)}',
+                                      '${element['type'] == 'income' ? '+' : '-'}${currencyFormat.format(element['amount'])}',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color:
+                                            element['type'] == 'income'
+                                                ? Colors.green
+                                                : Colors.red,
+                                      ),
                                     ),
                                   );
                                 },
+                                order: GroupedListOrder.DESC,
                               ),
                     ),
                   ],
