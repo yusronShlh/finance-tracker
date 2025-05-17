@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:grouped_list/grouped_list.dart';
 import 'package:lunari/pages/add_transaction_page.dart';
 import 'package:lunari/utils/colors.dart';
+import 'package:awesome_dialog/awesome_dialog.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class HomePage extends StatelessWidget {
   final String email;
@@ -112,10 +114,28 @@ class HomePage extends StatelessWidget {
                             color: Colors.white,
                           ),
                         ),
-                        Icon(
-                          Icons.notifications_none,
-                          color: Colors.white,
-                          size: 28,
+                        IconButton(
+                          icon: Icon(
+                            Icons.logout,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                          onPressed: () {
+                            AwesomeDialog(
+                              context: context,
+                              dialogType: DialogType.warning,
+                              animType: AnimType.bottomSlide,
+                              title: 'Konfirmasi Logout',
+                              desc:
+                                  'Apakah kamu yakin ingin keluar dari akun ini?',
+                              btnCancelText: "Batal",
+                              btnCancelOnPress: () {},
+                              btnOkText: "Logout",
+                              btnOkOnPress: () async {
+                                await FirebaseAuth.instance.signOut();
+                              },
+                            ).show();
+                          },
                         ),
                       ],
                     ),
@@ -129,7 +149,7 @@ class HomePage extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Total Balance',
+                            'Total saldo',
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.grey[300],

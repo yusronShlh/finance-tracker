@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lunari/pages/home_page.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:lunari/pages/login_page.dart';
+import 'package:lunari/screens/splash_screen.dart';
 import 'firebase_options.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -24,7 +25,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: LoginPage(),
+      home: SplashScreen(),
     );
   }
 }
